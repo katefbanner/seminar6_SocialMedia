@@ -1,0 +1,215 @@
+---
+title: "Reddit API & Github"
+author: "Zach Dickson"
+date: "WT 2025"
+format: 
+  html:
+    code-fold: false
+    number_sections: true
+    toc: false
+    embed-resources: true 
+---
+
+
+
+
+# Accessing the Reddit API & Creating a Github Repository
+
+
+In this short tutorial, we'll access the Reddit API and create a dataset. We'll then create a Github repository and push the dataset and code to the repository.
+
+## Accessing the Reddit API
+
+Reddit is a social news aggregation, web content rating, and discussion website. It allows registered members to submit content to the site, such as links, text posts, and images, which are then voted up or down by other members. Reddit has an API that allows developers to access and interact with Reddit data.
+
+
+
+To access the Reddit API, you'll need to create an account on Reddit and create an app to get the necessary credentials. Here's how you can do it:
+
+1. Go to [Reddit](https://www.reddit.com/) and create an account if you don't have one.
+2. Go to [https://www.reddit.com/prefs/apps](https://www.reddit.com/prefs/apps) and click on "Create App" or "Create Another App".
+3. Fill in the details for your app, such as the name, description, and redirect URI. For the redirect URI, you can use `http://localhost:8080` for now.
+4. Select the "script" option for the app type.
+5. Click on "Create App" to create the app.
+6. Note down the `client_id` and `client_secret` for your app. You'll need these to access the Reddit API.
+
+
+
+Now that you have the necessary credentials, you can use them to access the Reddit API. We'll use `R` to access the API: 
+
+
+```{r}
+# install packages if they are not already installed
+
+# List of package names to install
+packages_to_install <- c("RedditExtractoR", "httr", 'jsonlite', 'tidyverse')
+
+# Check if each package is already installed
+for (package_name in packages_to_install) {
+  if (!(package_name %in% installed.packages())) {
+    # If not installed, install the package
+    install.packages(package_name)
+  }
+}
+
+
+# load libraries 
+library(RedditExtractoR)
+library(jsonlite)
+library(tidyverse)
+library(httr)
+
+
+
+# set credentials: https://www.reddit.com/prefs/apps
+
+#### you'll need to replace the client_id, secret_key, and user_name with your own credentials. 
+
+client_id = ''
+secret_key = ''
+user_name = ''
+
+# load credentials
+source("credentials.R")
+
+
+
+# authenticate and get token
+auth <- httr::POST(
+  "https://www.reddit.com/api/v1/access_token",
+  authenticate(client_id, secret_key),
+  body = list(grant_type = "client_credentials"),
+  encode = "form",
+  user_agent(user_name)
+)
+
+# Extract token
+token <- content(auth)$access_token
+```
+
+
+```{r}
+# Make an authenticated request to a subreddit
+
+subreddit <- "rstats"
+url <- paste0("https://oauth.reddit.com/r/", subreddit, "/hot")
+response <- GET(url, add_headers(Authorization = paste("bearer", token)), user_agent(user_name))
+
+# Check raw response for errors
+raw_response <- content(response, as = "text")
+#print(raw_response)  # Print raw response to check for errors
+
+# Parse JSON response with flatten = TRUE to simplify structure
+posts <- fromJSON(raw_response)
+
+# Extract the posts data
+posts_data <- posts$data$children$data
+
+# Convert the data to a data frame (use tibble for better printing)
+posts_df <- tibble(posts_data)
+```
+
+
+
+```{r}
+# print the first few rows of the data frame
+head(posts_df)
+```
+
+
+```{r}
+# Extract the relevant columns
+colnames(posts_df)
+
+posts_df_subset <- posts_df |>
+  select(subreddit, author, approved_at_utc, title, score, num_comments,url) 
+
+# print the first few rows of the data frame
+head(posts_df_subset)
+```
+
+
+
+```{r}
+# save the data frame to a csv file
+write_csv(posts_df_subset, "reddit_rstats_posts.csv")
+```
+
+
+
+
+# Using the `RedditExtractoR` Package
+
+There are usually several ways to access an API. When preparing for the seminar, I realized that a most straightforward way was to use the [`RedditExtractoR`](https://github.com/ivan-rivera/RedditExtractor) package in R. This package provides functions to extract data from Reddit, such as posts, comments, and user information. 
+
+
+
+```{r}
+
+
+# load libraries 
+library(RedditExtractoR)
+library(jsonlite)
+library(tidyverse)
+library(httr)
+
+# extract top threads from politics subreddit
+
+
+# web: https://www.reddit.com/r/politics/
+# RedditExtractoR: https://github.com/ivan-rivera/RedditExtractor
+
+
+# extract top threads by keyword
+#top_politics_urls <- find_thread_urls(keywords ="ukpolitics", sort_by="top")
+#head(top_politics_urls)
+
+
+
+# extract new threads in r/conspiracy for keyword "moon": 
+moon_conspiracy_urls <- find_thread_urls(subreddit="conspiracy", keywords ="moon", sort_by="new")
+
+# display the moon conspiracy urls
+head(tibble(moon_conspiracy_urls))
+
+
+
+
+```
+
+
+
+```{r}
+
+# extract the comments from the thread urls (only get the first thread)
+moon_conspiracy_comments <- get_thread_content(moon_conspiracy_urls$url[1:2])
+
+# print the first few rows of the data frame
+head(tibble(moon_conspiracy_comments$comments))
+
+```
+
+
+
+
+
+
+
+
+
+# Let's save the moon conspiracy comments to a csv file
+
+
+```{r}
+
+# create a tibble from the comments
+df <- tibble(moon_conspiracy_comments$comments)
+
+# save the tibble to a csv file
+write_csv(df, "moon_conspiracy_comments.csv")
+
+```
+
+
+
+
