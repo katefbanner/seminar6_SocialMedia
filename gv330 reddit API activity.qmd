@@ -22,8 +22,6 @@ In this short tutorial, we'll access the Reddit API and create a dataset. We'll 
 
 Reddit is a social news aggregation, web content rating, and discussion website. It allows registered members to submit content to the site, such as links, text posts, and images, which are then voted up or down by other members. Reddit has an API that allows developers to access and interact with Reddit data.
 
-
-
 To access the Reddit API, you'll need to create an account on Reddit and create an app to get the necessary credentials. Here's how you can do it:
 
 1. Go to [Reddit](https://www.reddit.com/) and create an account if you don't have one.
@@ -58,21 +56,12 @@ library(RedditExtractoR)
 library(jsonlite)
 library(tidyverse)
 library(httr)
-
-
+library(readr)
 
 # set credentials: https://www.reddit.com/prefs/apps
 
-#### you'll need to replace the client_id, secret_key, and user_name with your own credentials. 
-
-client_id = ''
-secret_key = ''
-user_name = ''
-
 # load credentials
 source("credentials.R")
-
-
 
 # authenticate and get token
 auth <- httr::POST(
@@ -97,7 +86,7 @@ response <- GET(url, add_headers(Authorization = paste("bearer", token)), user_a
 
 # Check raw response for errors
 raw_response <- content(response, as = "text")
-#print(raw_response)  # Print raw response to check for errors
+print(raw_response)  # Print raw response to check for errors
 
 # Parse JSON response with flatten = TRUE to simplify structure
 posts <- fromJSON(raw_response)
@@ -161,22 +150,21 @@ library(httr)
 
 
 # extract top threads by keyword
-#top_politics_urls <- find_thread_urls(keywords ="ukpolitics", sort_by="top")
-#head(top_politics_urls)
-
-
+top_politics_urls <- find_thread_urls(keywords ="ukpolitics", sort_by="top")
+str(top_politics_urls) # check structure for head function 
+head(top_politics_urls)
 
 # extract new threads in r/conspiracy for keyword "moon": 
 moon_conspiracy_urls <- find_thread_urls(subreddit="conspiracy", keywords ="moon", sort_by="new")
 
 # display the moon conspiracy urls
-head(tibble(moon_conspiracy_urls))
+head(moon_conspiracy_urls)
 
-
-
+# look at conservatives
+trump_conspiracy_urls <- find_thread_urls(subreddit="conspiracy", keywords ="Trump", sort_by="new")
+head(trump_conspiracy_urls)
 
 ```
-
 
 
 ```{r}
@@ -184,16 +172,12 @@ head(tibble(moon_conspiracy_urls))
 # extract the comments from the thread urls (only get the first thread)
 moon_conspiracy_comments <- get_thread_content(moon_conspiracy_urls$url[1:2])
 
+
 # print the first few rows of the data frame
-head(tibble(moon_conspiracy_comments$comments))
+head(moon_conspiracy_comments$comments)
+head(moon_conspiracy_comments$threads)
 
 ```
-
-
-
-
-
-
 
 
 
